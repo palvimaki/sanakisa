@@ -51,6 +51,8 @@ if (IS_TOUCH) {
 
   document.addEventListener('touchend', e => {
     if (!held) return;
+    // Don't interfere with modal overlays — let their own handlers fire
+    if (e.target.closest('#confirm-overlay') || e.target.closest('#blank-selector')) return;
     e.preventDefault();
     const t = e.changedTouches[0];
     const target = document.elementFromPoint(t.clientX, t.clientY);
@@ -150,7 +152,8 @@ document.addEventListener('click', e => {
   if (
     e.target.closest('.cell') ||
     e.target.closest('#rack') ||
-    e.target.closest('#blank-selector')
+    e.target.closest('#blank-selector') ||
+    e.target.closest('#confirm-overlay')
   ) return;
   cancelHold();
 });
@@ -212,6 +215,31 @@ function askBlankLetter() {
     blankLettersEl.addEventListener('touchend', onPickTouch,   { passive: false });
     cancelBtn.addEventListener('click',    onCancel);
     cancelBtn.addEventListener('touchend', onCancelTouch, { passive: false });
+  });
+}
+
+// ─── Confirm dialog ───────────────────────────────────────────────────────────
+function showConfirm(message) {
+  return new Promise(resolve => {
+    const overlay  = document.getElementById('confirm-overlay');
+    const msgEl    = document.getElementById('confirm-message');
+    const okBtn    = document.getElementById('confirm-ok');
+    const noBtn    = document.getElementById('confirm-cancel');
+
+    msgEl.textContent     = message;
+    overlay.style.display = 'flex';
+
+    function finish(result) {
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      noBtn.removeEventListener('click', onNo);
+      resolve(result);
+    }
+    function onOk() { finish(true); }
+    function onNo() { finish(false); }
+
+    okBtn.addEventListener('click', onOk);
+    noBtn.addEventListener('click', onNo);
   });
 }
 
@@ -988,22 +1016,23 @@ function confirmExchange() {
 }
 
 function updateExchangeUI() {
-  const exBtn   = document.getElementById('exchange');
-  const cfBtn   = document.getElementById('exchange-confirm');
-  const isHuman = players[currentPlayer].isHuman;
+  const exBtn     = document.getElementById('exchange');
+  const cfBtn     = document.getElementById('exchange-confirm');
+  const cancelBtn = document.getElementById('exchange-cancel');
+  const isHuman   = players[currentPlayer].isHuman;
 
   if (exchangeMode) {
-    exBtn.textContent = 'Peruuta';
-    exBtn.classList.add('btn-ghost');
-    cfBtn.style.display = '';
-    cfBtn.disabled = exchangeSelected.size === 0;
+    exBtn.style.display    = 'none';
+    cfBtn.style.display    = '';
+    cfBtn.disabled         = exchangeSelected.size === 0;
+    cancelBtn.style.display = '';
     document.getElementById('submit').disabled = true;
     document.getElementById('pass').disabled   = true;
     document.getElementById('recall').disabled = true;
   } else {
-    exBtn.textContent = 'Vaihda';
-    exBtn.classList.remove('btn-ghost');
-    cfBtn.style.display = 'none';
+    exBtn.style.display    = '';
+    cfBtn.style.display    = 'none';
+    cancelBtn.style.display = 'none';
     document.getElementById('submit').disabled = gameOver || !isHuman;
     document.getElementById('pass').disabled   = gameOver || !isHuman;
     document.getElementById('recall').disabled = false;
@@ -1012,12 +1041,17 @@ function updateExchangeUI() {
 }
 
 // ─── Buttons ──────────────────────────────────────────────────────────────────
-document.getElementById('submit').addEventListener('click',           submitMove);
-document.getElementById('pass').addEventListener('click',             passMove);
-document.getElementById('exchange').addEventListener('click',         () => exchangeMode ? cancelExchangeMode() : enterExchangeMode());
+document.getElementById('submit').addEventListener('click', submitMove);
+document.getElementById('pass').addEventListener('click', async () => {
+  if (await showConfirm('Haluatko varmasti ohittaa vuoron?')) passMove();
+});
+document.getElementById('exchange').addEventListener('click',         enterExchangeMode);
 document.getElementById('exchange-confirm').addEventListener('click', confirmExchange);
+document.getElementById('exchange-cancel').addEventListener('click',  cancelExchangeMode);
 document.getElementById('recall').addEventListener('click',           recallTiles);
-document.getElementById('new-game').addEventListener('click',         showSetup);
+document.getElementById('new-game').addEventListener('click', async () => {
+  if (await showConfirm('Aloitetaanko uusi peli?')) showSetup();
+});
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 function showSetup() {

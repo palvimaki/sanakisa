@@ -263,3 +263,20 @@ button:disabled { background: var(--border); color: var(--muted); cursor: not-al
 .form-textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .form-buttons { display: flex; gap: 8px; margin-top: 18px; }
 .form-buttons button { flex: 1; }
+
+/* ── Confirm dialog ───────────────────────────────────────────────────────────── */
+#confirm-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  align-items: center; justify-content: center;
+  z-index: 400; backdrop-filter: blur(3px);
+}
+#confirm-modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px 28px; max-width: 260px; width: 88%;
+  text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+#confirm-message {
+  font-size: 0.92rem; color: var(--text); margin-bottom: 20px; line-height: 1.45;
+}
+.confirm-buttons { display: flex; gap: 8px; }
+.confirm-buttons button { flex: 1; }

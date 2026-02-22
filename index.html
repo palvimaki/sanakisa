@@ -38,6 +38,7 @@
         <button id="pass">Ohita</button>
         <button id="exchange">Vaihda</button>
         <button id="exchange-confirm" style="display:none">Vahvista vaihto</button>
+        <button id="exchange-cancel" class="btn-ghost" style="display:none">Peruuta</button>
         <button id="recall">Palauta</button>
         <button id="new-game" class="btn-ghost">Uusi peli</button>
       </div>
@@ -108,6 +109,17 @@
           <button type="button" id="close-feedback" class="btn-ghost">Peruuta</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Confirm dialog -->
+  <div id="confirm-overlay">
+    <div id="confirm-modal">
+      <p id="confirm-message"></p>
+      <div class="confirm-buttons">
+        <button id="confirm-ok">Kyllä</button>
+        <button id="confirm-cancel" class="btn-ghost">Ei</button>
+      </div>
     </div>
   </div>
 
