@@ -105,14 +105,15 @@ async function handleTouchDrop(target, x, y) {
     }
 
     if (held.tile.letter === ' ' && !held.tile.assignedLetter) {
+      stopGhost(); // hide ghost so it doesn't overlap the alphabet modal
       const letter = await askBlankLetter();
       if (!letter) { cancelHold(); return; }
       held.tile = { ...held.tile, assignedLetter: letter };
     }
 
     finishPlacing(row, col);
-  } else if (rackEl) {
-    // Finger lifted over rack — return board tile to rack, or just cancel for rack tile
+  } else if (rackEl || target?.closest('#panel-p1') || y >= window.innerHeight * 0.72) {
+    // Finger lifted over rack / bottom panel / lower portion of screen → return to rack
     if (held.source === 'board') {
       players[currentPlayer].rack.push({ letter: held.tile.letter, points: held.tile.points });
       board[held.origRow][held.origCol] = null;
@@ -315,8 +316,10 @@ function renderBoard() {
               const touch = e.touches[0];
               const t = board[row][col];
               board[row][col] = null;
+              // Strip assignedLetter from blanks so the picker shows again on re-place
               held = { source: 'board', origRow: row, origCol: col,
-                       tile: { letter: t.letter, points: t.points, assignedLetter: t.assignedLetter } };
+                       tile: { letter: t.letter, points: t.points,
+                               ...(t.letter !== ' ' && { assignedLetter: t.assignedLetter }) } };
               startGhost(held.tile, touch.clientX, touch.clientY);
               tileEl.style.visibility = 'hidden'; // hide in-place; no re-render so touch chain stays intact
             }, { passive: false });
@@ -488,7 +491,9 @@ function handlePendingTileClick(row, col, e) {
     }
 
     const oldHeld = held;
-    held = { source: 'board', origRow: row, origCol: col, tile: { letter: existing.letter, points: existing.points, assignedLetter: existing.assignedLetter } };
+    held = { source: 'board', origRow: row, origCol: col,
+             tile: { letter: existing.letter, points: existing.points,
+                     ...(existing.letter !== ' ' && { assignedLetter: existing.assignedLetter }) } };
     startGhost(held.tile, e.clientX, e.clientY);
 
     // Place old held tile at this cell
@@ -503,7 +508,9 @@ function handlePendingTileClick(row, col, e) {
   // Nothing held: pick up this tile
   const tile = board[row][col];
   board[row][col] = null;
-  held = { source: 'board', origRow: row, origCol: col, tile: { letter: tile.letter, points: tile.points, assignedLetter: tile.assignedLetter } };
+  held = { source: 'board', origRow: row, origCol: col,
+           tile: { letter: tile.letter, points: tile.points,
+                   ...(tile.letter !== ' ' && { assignedLetter: tile.assignedLetter }) } };
   startGhost(held.tile, e.clientX, e.clientY);
   renderBoard();
   applyLiveValidation();
