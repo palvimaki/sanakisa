@@ -171,22 +171,46 @@ ALPHABET.forEach(letter => {
 
 function askBlankLetter() {
   return new Promise(resolve => {
-    const overlay = document.getElementById('blank-selector');
+    const overlay   = document.getElementById('blank-selector');
+    const cancelBtn = document.getElementById('blank-cancel');
     overlay.style.display = 'flex';
+
+    function finish(result) {
+      blankLettersEl.removeEventListener('click',    onPick);
+      blankLettersEl.removeEventListener('touchend', onPickTouch);
+      cancelBtn.removeEventListener('click',    onCancel);
+      cancelBtn.removeEventListener('touchend', onCancelTouch);
+      overlay.style.display = 'none';
+      resolve(result);
+    }
+
+    // Desktop: click
     function onPick(e) {
       const btn = e.target.closest('.blank-letter');
       if (!btn) return;
       finish(btn.dataset.letter);
     }
     function onCancel() { finish(null); }
-    function finish(result) {
-      blankLettersEl.removeEventListener('click', onPick);
-      document.getElementById('blank-cancel').removeEventListener('click', onCancel);
-      overlay.style.display = 'none';
-      resolve(result);
+
+    // Touch: touchend with stopPropagation so the document touchend handler
+    // (which would call cancelHold) never sees these events.
+    function onPickTouch(e) {
+      const btn = e.target.closest('.blank-letter');
+      if (!btn) return;
+      e.stopPropagation();
+      e.preventDefault();
+      finish(btn.dataset.letter);
     }
-    blankLettersEl.addEventListener('click', onPick);
-    document.getElementById('blank-cancel').addEventListener('click', onCancel);
+    function onCancelTouch(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      finish(null);
+    }
+
+    blankLettersEl.addEventListener('click',    onPick);
+    blankLettersEl.addEventListener('touchend', onPickTouch,   { passive: false });
+    cancelBtn.addEventListener('click',    onCancel);
+    cancelBtn.addEventListener('touchend', onCancelTouch, { passive: false });
   });
 }
 
