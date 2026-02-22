@@ -32,12 +32,31 @@ let exchangeSelected = new Set(); // rack indices selected for exchange
 
 // ─── Cursor ghost ─────────────────────────────────────────────────────────────
 const cursorTileEl = document.getElementById('cursor-tile');
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 document.addEventListener('mousemove', e => {
   if (!held) return;
   cursorTileEl.style.left = e.clientX + 'px';
   cursorTileEl.style.top  = e.clientY + 'px';
 });
+
+if (IS_TOUCH) {
+  document.addEventListener('touchmove', e => {
+    if (!held) return;
+    e.preventDefault(); // prevent page scroll while dragging a tile
+    const t = e.touches[0];
+    cursorTileEl.style.left = t.clientX + 'px';
+    cursorTileEl.style.top  = t.clientY + 'px';
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!held) return;
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    const target = document.elementFromPoint(t.clientX, t.clientY);
+    handleTouchDrop(target, t.clientX, t.clientY);
+  }, { passive: false });
+}
 
 function startGhost(tile, x, y) {
   cursorTileEl.innerHTML = '';
@@ -65,6 +84,49 @@ function cancelHold() {
   held = null;
   stopGhost();
   renderRack();
+}
+
+// Touch drop handler — finds the board cell or rack under the finger
+async function handleTouchDrop(target, x, y) {
+  const cell   = target?.closest('.cell');
+  const rackEl = target?.closest('#rack');
+
+  if (cell) {
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+    if (isNaN(row) || isNaN(col)) { cancelHold(); return; }
+    if (board[row][col]?.fixed) { cancelHold(); return; }
+
+    // Swap any pending tile on the target cell back to rack
+    if (board[row][col] && !board[row][col].fixed) {
+      const ex = board[row][col];
+      players[currentPlayer].rack.push({ letter: ex.letter, points: ex.points });
+      board[row][col] = null;
+    }
+
+    if (held.tile.letter === ' ' && !held.tile.assignedLetter) {
+      const letter = await askBlankLetter();
+      if (!letter) { cancelHold(); return; }
+      held.tile = { ...held.tile, assignedLetter: letter };
+    }
+
+    finishPlacing(row, col);
+  } else if (rackEl) {
+    // Finger lifted over rack — return board tile to rack, or just cancel for rack tile
+    if (held.source === 'board') {
+      players[currentPlayer].rack.push({ letter: held.tile.letter, points: held.tile.points });
+      board[held.origRow][held.origCol] = null;
+      held = null;
+      stopGhost();
+      renderBoard();
+      renderRack();
+      applyLiveValidation();
+    } else {
+      cancelHold();
+    }
+  } else {
+    cancelHold();
+  }
 }
 
 // Place the currently held tile on board at (row, col). Synchronous.
@@ -221,19 +283,37 @@ function renderBoard() {
           tileEl.classList.add('fixed-tile');
         } else {
           tileEl.classList.add('pending');
-          tileEl.draggable = true;
-          tileEl.addEventListener('dragstart', e => handleBoardDragStart(e, row, col));
-          tileEl.addEventListener('dragend',   e => handleBoardDragEnd(e, row, col));
-          tileEl.addEventListener('click',     e => { e.stopPropagation(); handlePendingTileClick(row, col, e); });
+          if (IS_TOUCH) {
+            tileEl.addEventListener('touchstart', e => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (held) return; // already holding something — touchend will handle drop
+              const touch = e.touches[0];
+              const t = board[row][col];
+              board[row][col] = null;
+              held = { source: 'board', origRow: row, origCol: col,
+                       tile: { letter: t.letter, points: t.points, assignedLetter: t.assignedLetter } };
+              startGhost(held.tile, touch.clientX, touch.clientY);
+              renderBoard();
+              applyLiveValidation();
+            }, { passive: false });
+          } else {
+            tileEl.draggable = true;
+            tileEl.addEventListener('dragstart', e => handleBoardDragStart(e, row, col));
+            tileEl.addEventListener('dragend',   e => handleBoardDragEnd(e, row, col));
+            tileEl.addEventListener('click',     e => { e.stopPropagation(); handlePendingTileClick(row, col, e); });
+          }
         }
         cell.appendChild(tileEl);
       }
 
-      // All cells accept drag-and-drop and click (for placing held tile)
-      cell.addEventListener('dragover',  handleDragOver);
-      cell.addEventListener('dragleave', handleDragLeave);
-      cell.addEventListener('drop',      handleDrop);
-      cell.addEventListener('click',     e => handleCellClick(e, row, col));
+      // Cells accept drops (drag on desktop, touch handled via document touchend)
+      if (!IS_TOUCH) {
+        cell.addEventListener('dragover',  handleDragOver);
+        cell.addEventListener('dragleave', handleDragLeave);
+        cell.addEventListener('drop',      handleDrop);
+        cell.addEventListener('click',     e => handleCellClick(e, row, col));
+      }
 
       el.appendChild(cell);
     }
@@ -267,6 +347,19 @@ function renderRack() {
         renderRack();
         updateExchangeUI();
       });
+    } else if (IS_TOUCH) {
+      if (held?.source === 'rack' && held.rackIdx === idx) el.classList.add('held');
+      el.addEventListener('touchstart', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (held?.source === 'rack' && held.rackIdx === idx) { cancelHold(); return; }
+        if (held) cancelHold();
+        const touch = e.touches[0];
+        const tile = players[currentPlayer].rack[idx];
+        held = { source: 'rack', rackIdx: idx, tile: { ...tile } };
+        startGhost(tile, touch.clientX, touch.clientY);
+        renderRack();
+      }, { passive: false });
     } else {
       el.draggable = true;
       if (held?.source === 'rack' && held.rackIdx === idx) el.classList.add('held');
@@ -277,16 +370,19 @@ function renderRack() {
     rackEl.appendChild(el);
   });
 
-  // Clicking empty rack area while holding a board tile → return to rack
-  rackEl.addEventListener('click', e => {
-    if (!held || held.source !== 'board' || e.target.closest('.tile')) return;
-    players[currentPlayer].rack.push({ letter: held.tile.letter, points: held.tile.points });
-    held = null;
-    stopGhost();
-    renderBoard();
-    renderRack();
-    applyLiveValidation();
-  });
+  // Clicking empty rack area while holding a board tile → return to rack (desktop only;
+  // touch devices handle this via the document touchend → handleTouchDrop)
+  if (!IS_TOUCH) {
+    rackEl.addEventListener('click', e => {
+      if (!held || held.source !== 'board' || e.target.closest('.tile')) return;
+      players[currentPlayer].rack.push({ letter: held.tile.letter, points: held.tile.points });
+      held = null;
+      stopGhost();
+      renderBoard();
+      renderRack();
+      applyLiveValidation();
+    });
+  }
 }
 
 function updateUI() {
