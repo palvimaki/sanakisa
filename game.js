@@ -294,8 +294,7 @@ function renderBoard() {
               held = { source: 'board', origRow: row, origCol: col,
                        tile: { letter: t.letter, points: t.points, assignedLetter: t.assignedLetter } };
               startGhost(held.tile, touch.clientX, touch.clientY);
-              renderBoard();
-              applyLiveValidation();
+              tileEl.style.visibility = 'hidden'; // hide in-place; no re-render so touch chain stays intact
             }, { passive: false });
           } else {
             tileEl.draggable = true;
@@ -358,7 +357,7 @@ function renderRack() {
         const tile = players[currentPlayer].rack[idx];
         held = { source: 'rack', rackIdx: idx, tile: { ...tile } };
         startGhost(tile, touch.clientX, touch.clientY);
-        renderRack();
+        el.classList.add('held'); // dim in-place; no re-render so touch chain stays intact
       }, { passive: false });
     } else {
       el.draggable = true;
