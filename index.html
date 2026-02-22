@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Sanakisa</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Sanakisa</h1>
+    <span id="bag-count"></span>
+  </header>
+
+  <main>
+    <div class="player-panel" id="panel-p2">
+      <div class="panel-row">
+        <span class="panel-name" id="name-p2">Pelaaja 2</span>
+        <span class="panel-score" id="score-p2">0</span>
+      </div>
+      <div class="panel-msg" id="msg-p2"></div>
+    </div>
+
+    <div id="board-wrap">
+      <div id="board"></div>
+    </div>
+
+    <div class="player-panel" id="panel-p1">
+      <div class="panel-row">
+        <span class="panel-name" id="name-p1">Pelaaja 1</span>
+        <span class="panel-score" id="score-p1">0</span>
+      </div>
+      <div class="panel-msg" id="msg-p1"></div>
+      <div id="rack"></div>
+      <div id="controls">
+        <button id="submit">Hyväksy</button>
+        <button id="pass">Ohita</button>
+        <button id="exchange">Vaihda</button>
+        <button id="exchange-confirm" style="display:none">Vahvista vaihto</button>
+        <button id="recall">Palauta</button>
+        <button id="new-game" class="btn-ghost">Uusi peli</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Cursor-ghost tile (follows mouse when holding a tile) -->
+  <div id="cursor-tile"></div>
+
+  <!-- Blank letter picker -->
+  <div id="blank-selector">
+    <div id="blank-modal">
+      <div class="blank-title">Valitse kirjain</div>
+      <div id="blank-letters"></div>
+      <button id="blank-cancel" class="btn-ghost">Peruuta</button>
+    </div>
+  </div>
+
+  <!-- Setup overlay -->
+  <div id="setup-overlay">
+    <div id="setup-modal">
+      <h2>Sanakisa</h2>
+      <p class="setup-sub">Suomalainen sanapeli &nbsp;·&nbsp; <span class="beta-badge">BETA</span></p>
+      <div class="setup-section">
+        <div class="setup-label">Vaikeustaso</div>
+        <label class="radio-opt">
+          <input type="radio" name="difficulty" value="easy" checked>
+          <span>Helppo</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="difficulty" value="medium">
+          <span>Keski</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="difficulty" value="hard">
+          <span>Vaikea</span>
+        </label>
+      </div>
+      <button id="start-game">Aloita peli</button>
+      <p class="setup-feedback-link"><a href="#" id="open-feedback">Anna palautetta</a></p>
+    </div>
+  </div>
+
+  <!-- Feedback overlay -->
+  <div id="feedback-overlay">
+    <div id="feedback-modal">
+      <h3>Anna palautetta</h3>
+      <p class="feedback-sub">Mielipiteet, parannusehdotukset ja toiveet ovat tervetulleita.</p>
+      <form id="feedback-form" action="https://formsubmit.co/palvimaki@gmail.com" method="POST">
+        <input type="hidden" name="_subject" value="Sanakisa-palaute">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_next" value="https://sanakisa.fi/?kiitos=1">
+        <div class="form-group">
+          <label class="form-label">Nimi (vapaaehtoinen)</label>
+          <input type="text" name="nimi" class="form-input" placeholder="Nimesi">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sähköposti (vapaaehtoinen)</label>
+          <input type="email" name="sahkoposti" class="form-input" placeholder="jos haluat vastauksen">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Viesti *</label>
+          <textarea name="viesti" class="form-input form-textarea" placeholder="Kirjoita palautteesi tähän..." required></textarea>
+        </div>
+        <div class="form-buttons">
+          <button type="submit">Lähetä</button>
+          <button type="button" id="close-feedback" class="btn-ghost">Peruuta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
